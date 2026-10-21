@@ -1,3 +1,6 @@
-You can play the game here
+Profile hub + Neon Relay game.
 
-[ thecomicopera.github.io](https://thecomicopera.github.io/page.neon-relay/)
+- Root (/)            → profile page: index.html
+- Game (/game/)       → Neon Relay puzzle: game/index.html
+
+Deployed at: https://thecomicopera.github.io/page.neon-relay/

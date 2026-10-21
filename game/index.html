@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Neon Relay</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --cyan: #46f5ef;
+            --pink: #ff439c
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: #080b17;
+            color: #dce7ff;
+            font: 16px system-ui, sans-serif;
+            background-image: linear-gradient(120deg, #10142d, #080b17 65%);
+            min-height: 100vh
+        }
+
+        main {
+            max-width: 960px;
+            margin: auto;
+            padding: 28px 20px
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 20px
+        }
+
+        h1 {
+            color: var(--cyan);
+            letter-spacing: 5px;
+            font-size: clamp(28px, 6vw, 48px);
+            margin: 0;
+            text-shadow: 0 0 20px #46f5ef50
+        }
+
+        .tag {
+            color: var(--pink);
+            font: 12px monospace;
+            letter-spacing: 2px
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 270px;
+            gap: 24px;
+            margin-top: 24px
+        }
+
+        .panel {
+            background: #11162b;
+            border: 1px solid #2b3554;
+            border-radius: 12px;
+            padding: 20px
+        }
+
+        #board {
+            display: grid;
+            gap: 6px;
+            aspect-ratio: 1;
+            width: 100%
+        }
+
+        .tile {
+            padding: 0;
+            border: 1px solid #293552;
+            border-radius: 8px;
+            background: #0b1021;
+            cursor: pointer;
+            position: relative;
+            min-width: 0;
+            transition: background .15s
+        }
+
+        .tile:hover,
+        .tile:focus-visible {
+            background: #202741;
+            outline: 2px solid var(--pink)
+        }
+
+        .tile svg {
+            width: 100%;
+            height: 100%;
+            display: block
+        }
+
+        .tile.live {
+            background: #103235;
+            border-color: #37c7c1;
+            box-shadow: inset 0 0 15px #46f5ef18
+        }
+
+        .tile.source {
+            border-color: var(--pink)
+        }
+
+        .tile.goal {
+            border-color: #b792ff
+        }
+
+        .tile small {
+            position: absolute;
+            bottom: 2px;
+            left: 0;
+            right: 0;
+            font: 9px monospace;
+            color: #fff;
+            background: #10162bc0
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin: 16px 0
+        }
+
+        button.action {
+            background: #1b2442;
+            color: #e5faff;
+            border: 1px solid #3b5575;
+            border-radius: 6px;
+            padding: 10px 14px;
+            cursor: pointer;
+            font: inherit
+        }
+
+        button.action:hover {
+            border-color: var(--cyan)
+        }
+
+        button:disabled {
+            opacity: .45;
+            cursor: default
+        }
+
+        #next {
+            background: #194443
+        }
+
+        .stats {
+            font: 14px monospace;
+            color: var(--cyan);
+            margin: 14px 0
+        }
+
+        h2 {
+            font-size: 18px;
+            color: var(--pink);
+            margin-top: 0
+        }
+
+        p,
+        li {
+            line-height: 1.6
+        }
+
+        ol {
+            padding-left: 20px
+        }
+
+        #message {
+            min-height: 58px;
+            border-left: 3px solid var(--cyan);
+            padding-left: 12px
+        }
+
+        #log {
+            font: 12px/1.7 monospace;
+            color: #8fa6c8;
+            border-top: 1px solid #293552;
+            padding-top: 12px
+        }
+
+        .legend {
+            font: 13px monospace;
+            color: #a7b9d5
+        }
+
+        footer {
+            color: #7789aa;
+            font-size: 12px;
+            margin-top: 20px
+        }
+
+        @media(max-width:700px) {
+            .layout {
+                grid-template-columns: 1fr
+            }
+
+            .panel {
+                padding: 14px
+            }
+
+            header {
+                align-items: flex-start;
+                flex-direction: column
+            }
+
+            .layout {
+                gap: 14px
+            }
+
+            aside {
+                order: 2
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header>
+            <div>
+                <div class="tag">UNDERGROUND NETWORK // OFFLINE OPERATION</div>
+                <h1>NEON RELAY</h1>
+            </div>
+            <div class="tag" id="sector"></div>
+        </header>
+        <div class="layout">
+            <section class="panel">
+                <div id="board" aria-label="Rotating circuit puzzle"></div>
+                <div class="stats" id="stats"></div>
+                <div class="controls"><button class="action" id="reset">Reset</button><button class="action"
+                        id="hint">Hint</button><button class="action" id="next" disabled>Next sector →</button></div>
+                <div class="legend">PINK = uplink · PURPLE = data vault · CYAN = powered</div>
+            </section>
+            <aside class="panel">
+                <h2 id="title"></h2>
+                <p id="story"></p>
+                <div id="message" role="status" aria-live="polite"></div>
+                <h2 style="margin-top:24px">Operator manual</h2>
+                <ol>
+                    <li>Click a circuit tile to rotate it clockwise. Keyboard: focus a tile, then Enter or Space.</li>
+                    <li>Connect the pink uplink to every purple vault.</li>
+                    <li>Connections work only when both neighboring ports face each other.</li>
+                    <li>Unused wires are fine. There is no timer: plan your route.</li>
+                </ol>
+                <div id="log"></div>
+            </aside>
+        </div>
+        <footer>Original cyberpunk-themed prototype. No downloads, libraries, trackers, or network requests required.
+        </footer>
+    </main>
+    <script>
+        const $ = id => document.getElementById(id); const dirs = [[-1, 0], [0, 1], [1, 0], [0, -1]]; const levels = [{ n: 4, title: '01 / Pirate Radio', story: 'The district is silent. Reconnect the rooftop transmitter to two rebel broadcast vaults.', goals: [3, 15], seed: 193 }, { n: 5, title: '02 / Ghost Market', story: 'A corporate blackout sealed the night market. Restore three encrypted ledgers before the vendors lose their identities.', goals: [4, 20, 24], seed: 782 }, { n: 6, title: '03 / Memory Heist', story: 'The archive contains memories confiscated from the lower city. Bring all four vaults onto the underground network.', goals: [5, 30, 35, 17], seed: 4712 }, { n: 5, title: '04 / Skybridge Collapse', story: 'The elevated tram line is falling apart. Restore the skybridge relay to five drifting data nodes before the city loses its last route home.', goals: [6, 11, 17, 22, 24], seed: 841 }, { n: 6, title: '05 / Blackwater Exchange', story: 'Flooded tunnels and stolen ID chips have shut down the canal exchange. Bring six floating vaults back online before the smugglers drain the district dry.', goals: [7, 14, 19, 25, 31, 34], seed: 2197 }, { n: 7, title: '06 / Dawn Circuit', story: 'Sunrise is closing in on the old grid. Route the final signal through the top-level archive and wake every tower in the city before dawn breaks.', goals: [8, 18, 27, 36, 42, 47], seed: 7031 }]; let stage = 0, tiles = [], original = [], solution = [], moves = 0, hints = 0, won = false, random;
+        function rng(seed) { return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296 } }
+        function rot(mask) { return ((mask << 1) & 15) | (mask >> 3) }
+        function neighbor(i, d, n) { let r = Math.floor(i / n) + dirs[d][0], c = i % n + dirs[d][1]; return r >= 0 && c >= 0 && r < n && c < n ? r * n + c : -1 }
+        function load() { const L = levels[stage], n = L.n; random = rng(L.seed); solution = Array(n * n).fill(0); let seen = new Set([0]); function carve(i) { let ds = [0, 1, 2, 3]; for (let j = 3; j > 0; j--) { let k = Math.floor(random() * (j + 1));[ds[j], ds[k]] = [ds[k], ds[j]] } for (let d of ds) { let j = neighbor(i, d, n); if (j < 0 || seen.has(j)) continue; seen.add(j); solution[i] |= 1 << d; solution[j] |= 1 << ((d + 2) % 4); carve(j) } } carve(0); tiles = solution.map(m => { for (let t = Math.floor(random() * 4); t > 0; t--)m = rot(m); return m }); original = tiles.slice(); moves = 0; hints = 0; won = false; $('sector').textContent = `SECTOR ${stage + 1} / ${levels.length}`; $('title').textContent = L.title; $('story').textContent = L.story; $('next').disabled = true; $('next').textContent = stage === levels.length - 1 ? 'Play again ↻' : 'Next sector →'; $('log').textContent = '> secure link awaiting handshake'; draw() }
+        function powered() { const n = levels[stage].n, s = new Set([0]), q = [0]; while (q.length) { let i = q.shift(); for (let d = 0; d < 4; d++) { let j = neighbor(i, d, n); if (j >= 0 && !s.has(j) && (tiles[i] & (1 << d)) && (tiles[j] & (1 << ((d + 2) % 4)))) { s.add(j); q.push(j) } } } return s }
+        function draw(focus = -1) { const L = levels[stage], p = powered(), count = L.goals.filter(i => p.has(i)).length; won = count === L.goals.length; const b = $('board'); b.style.gridTemplateColumns = `repeat(${L.n},1fr)`; b.replaceChildren(); tiles.forEach((mask, i) => { let btn = document.createElement('button'); btn.className = 'tile' + (p.has(i) ? ' live' : '') + (i === 0 ? ' source' : '') + (L.goals.includes(i) ? ' goal' : ''); btn.setAttribute('aria-label', `Row ${Math.floor(i / L.n) + 1}, column ${i % L.n + 1}, ${i === 0 ? 'uplink, ' : L.goals.includes(i) ? 'vault, ' : ''}${p.has(i) ? 'powered' : 'unpowered'}. Rotate clockwise`); let color = p.has(i) ? '#46f5ef' : '#526584'; let lines = ''; for (let d = 0; d < 4; d++)if (mask & (1 << d)) lines += `<path d="M 50 50 L ${50 + dirs[d][1] * 50} ${50 + dirs[d][0] * 50}"/>`; btn.innerHTML = `<svg viewBox="0 0 100 100" aria-hidden="true"><g stroke="${color}" stroke-width="9" stroke-linecap="round" fill="none">${lines}</g><circle cx="50" cy="50" r="${i === 0 || L.goals.includes(i) ? 13 : 6}" fill="${i === 0 ? '#ff439c' : L.goals.includes(i) ? '#b792ff' : color}"/>${p.has(i) && L.goals.includes(i) ? '<circle cx="50" cy="50" r="5" fill="#fff"/>' : ''}</svg>${i === 0 ? '<small>UPLINK</small>' : L.goals.includes(i) ? '<small>VAULT</small>' : ''}`; btn.onclick = () => { if (won) return; tiles[i] = rot(tiles[i]); moves++; draw(i) }; b.appendChild(btn) }); $('stats').textContent = `VAULTS ${count}/${L.goals.length}  ·  ROTATIONS ${moves}  ·  HINTS ${hints}`; $('message').textContent = won ? 'ACCESS GRANTED. Vaults decrypted. The district belongs to its people again.' : 'Route the signal. Rotate circuits until every vault lights up.'; $('next').disabled = !won; $('hint').disabled = won; if (won) $('log').textContent = `> encryption bypassed\n> ${L.goals.length} vaults mirrored\n> uplink stable`; if (focus >= 0) b.children[focus].focus() }
+        $('reset').onclick = () => { tiles = original.slice(); moves = 0; hints = 0; $('log').textContent = '> circuit state restored'; draw() }; $('hint').onclick = () => { let i = tiles.findIndex((m, j) => m !== solution[j]); if (i < 0) return; tiles[i] = solution[i]; hints++; draw(i); $('message').textContent = won ? 'ACCESS GRANTED. All vaults are online.' : `Hint: restored the planned orientation at row ${Math.floor(i / levels[stage].n) + 1}, column ${i % levels[stage].n + 1}.` }; $('next').onclick = () => { stage = (stage + 1) % levels.length; load() }; load();
+    </script>
+</body>
+
+</html>
