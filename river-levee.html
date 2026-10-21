@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Levee — the survey redraws itself</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.11.3/p5.min.js"></script>
+<script>p5.disableFriendlyErrors = true;</script>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #06080f; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<script>
+// === CONFIG ===
+const CONFIG = {
+  seed: 2006,
+  w: 960, h: 540,
+  particleCount: 2400,
+  gridCols: 15,
+  gridRows: 10,
+  gridSamples: 44,
+  noiseScale: 0.0024,
+  curlGain: 16,
+  bendAmp: 58,
+};
+
+// === PALETTE ===
+const PAL = {
+  deep:    [12, 18, 36],
+  abyss:   [6, 8, 16],
+  jade:    [45, 212, 191],
+  cyan:    [103, 232, 249],
+  pale:    [167, 243, 208],
+  spark:   [251, 191, 36],
+  survey:  [176, 141, 87],
+  surveyD: [120, 98, 64],
+};
+
+// === STATE ===
+let bgBuf, trailBuf, scarBuf;
+let particles = [];
+let sparks = [];
+let hLines = [], vLines = [];
+let t = 0;
+let activity = 0;
+let mouseEngaged = false;
+
+function setup() {
+  createCanvas(CONFIG.w, CONFIG.h);
+  pixelDensity(1);
+  frameRate(60);
+  randomSeed(CONFIG.seed);
+  noiseSeed(CONFIG.seed);
+
+  bgBuf    = createGraphics(CONFIG.w, CONFIG.h);
+  trailBuf = createGraphics(CONFIG.w, CONFIG.h);
+  scarBuf  = createGraphics(CONFIG.w, CONFIG.h);
+
+  paintBackground();
+
+  for (let i = 0; i < CONFIG.particleCount; i++) particles.push(new Particle());
+
+  // survey lines: vertical + horizontal, sampled polylines
+  const stepC = CONFIG.w / (CONFIG.gridCols + 1);
+  const stepR = CONFIG.h / (CONFIG.gridRows + 1);
+  for (let c = 1; c <= CONFIG.gridCols; c++) {
+    const x = c * stepC;
+    const pts = [];
+    for (let s = 0; s <= CONFIG.gridSamples; s++) pts.push({ x, y: (s / CONFIG.gridSamples) * CONFIG.h, ox: 0, oy: 0 });
+    vLines.push({ pts, flash: 0 });
+  }
+  for (let r = 1; r <= CONFIG.gridRows; r++) {
+    const y = r * stepR;
+    const pts = [];
+    for (let s = 0; s <= CONFIG.gridSamples; s++) pts.push({ x: (s / CONFIG.gridSamples) * CONFIG.w, y, ox: 0, oy: 0 });
+    hLines.push({ pts, flash: 0 });
+  }
+}
+
+function paintBackground() {
+  // deep vertical gradient
+  for (let y = 0; y < CONFIG.h; y++) {
+    const f = y / CONFIG.h;
+    bgBuf.stroke(
+      lerp(PAL.deep[0], PAL.abyss[0], f),
+      lerp(PAL.deep[1], PAL.abyss[1], f),
+      lerp(PAL.deep[2], PAL.abyss[2], f)
+    );
+    bgBuf.line(0, y, CONFIG.w, y);
+  }
+  // pinprick texture — surveyor's marks in the dark
+  bgBuf.noStroke();
+  for (let i = 0; i < 1400; i++) {
+    const a = random(5, 16);
+    bgBuf.fill(120, 150, 190, a);
+    bgBuf.rect(random(CONFIG.w), random(CONFIG.h), 1, 1);
+  }
+}
+
+// curl of a 3D noise potential — divergence-free meander field
+function curlAt(x, y) {
+  const s = CONFIG.noiseScale, e = 1.4 * s;
+  const n1 = noise(x * s, y * s + e, t);
+  const n2 = noise(x * s, y * s - e, t);
+  const n3 = noise(x * s - e, y * s, t);
+  const n4 = noise(x * s + e, y * s, t);
+  return [(n1 - n2) * CONFIG.curlGain, -(n3 - n4) * CONFIG.curlGain];
+}
+
+class Particle {
+  constructor() { this.reset(); }
+  reset(bx, by, burst) {
+    this.x = bx !== undefined ? bx : random(CONFIG.w);
+    this.y = by !== undefined ? by : random(CONFIG.h);
+    this.life = random(260, 760);
+    this.age = 0;
+    this.vx = 0; this.vy = 0;
+    if (burst) {
+      const a = random(TWO_PI), sp = random(1.5, 4.5);
+      this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
+    }
+    this.warm = random() < 0.07;
+    this.hueJitter = random(-18, 18);
+  }
+  update() {
+    const [fx, fy] = curlAt(this.x, this.y);
+    this.vx += (fx * 2.1 - this.vx) * 0.10;
+    this.vy += (fy * 2.1 - this.vy) * 0.10;
+
+    // the cursor is agency: a soft vortex that pulls the river awake
+    // (only once the pointer has actually been on the canvas — p5 reports 0,0 before)
+    const dx = this.x - mouseX, dy = this.y - mouseY;
+    const d2 = dx * dx + dy * dy;
+    if (mouseEngaged && d2 < 62500 && d2 > 4) {
+      const d = Math.sqrt(d2);
+      const f = (1 - d / 250) * (0.25 + activity * 1.5);
+      this.vx += (-dy / d) * f * 1.1 - (dx / d) * f * 0.35;
+      this.vy += ( dx / d) * f * 1.1 - (dy / d) * f * 0.35;
+    }
+
+    // clamp
+    const sp2 = this.vx * this.vx + this.vy * this.vy;
+    if (sp2 > 49) { const m = 7 / Math.sqrt(sp2); this.vx *= m; this.vy *= m; }
+
+    this.px = this.x; this.py = this.y;
+    this.x += this.vx; this.y += this.vy;
+    this.age++;
+    if (this.x < -24 || this.x > CONFIG.w + 24 || this.y < -24 || this.y > CONFIG.h + 24 || this.age > this.life) this.reset();
+  }
+  display(buf) {
+    const sp = Math.hypot(this.x - this.px, this.y - this.py);
+    const a = 30 + Math.min(48, sp * 16);
+    if (this.warm) buf.stroke(PAL.spark[0], PAL.spark[1], PAL.spark[2], a * 0.55);
+    else {
+      const mix = constrain(noise(this.x * 0.004, this.y * 0.004, 10) + this.hueJitter / 100, 0, 1);
+      buf.stroke(
+        lerp(PAL.jade[0], PAL.cyan[0], mix),
+        lerp(PAL.jade[1], PAL.cyan[1], mix),
+        lerp(PAL.jade[2], PAL.cyan[2], mix),
+        a
+      );
+    }
+    buf.strokeWeight(0.7 + Math.min(1.3, sp * 0.5));
+    buf.line(this.px, this.py, this.x, this.y);
+  }
+}
+
+class Spark {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    const a = random(TWO_PI), sp = random(0.6, 3.2);
+    this.vx = Math.cos(a) * sp; this.vy = Math.sin(a) * sp;
+    this.life = random(40, 110); this.max = this.life;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    this.vx *= 0.965; this.vy *= 0.965;
+    this.life--;
+    return this.life > 0;
+  }
+}
+
+function draw() {
+  // ---- agency: the cursor bends the survey, but the river always runs ----
+  const mdx = mouseX - pmouseX, mdy = mouseY - pmouseY;
+  const ms = Math.sqrt(mdx * mdx + mdy * mdy);
+  const target = Math.min(1, ms / 9);
+  activity += (target - activity) * 0.05;
+  if (ms > 0.5) mouseEngaged = true;
+  t += 0.004 + activity * 0.004;
+
+  // ---- river channels (persistent, slowly fading like oxbows) ----
+  trailBuf.noStroke();
+  trailBuf.fill(PAL.abyss[0], PAL.abyss[1], PAL.abyss[2], 1);
+  trailBuf.rect(0, 0, CONFIG.w, CONFIG.h);
+  for (const p of particles) { p.update(); p.display(trailBuf); }
+
+  // ---- the survey bends under the flow, then reasserts when idle ----
+  updateGrid(vLines, true);
+  updateGrid(hLines, false);
+
+  // ---- compose ----
+  image(bgBuf, 0, 0);
+  drawGridLines(vLines);
+  drawGridLines(hLines);
+  image(scarBuf, 0, 0);
+  image(trailBuf, 0, 0);
+
+  // ---- sparks: phosphor ----
+  blendMode(ADD);
+  noStroke();
+  for (let i = sparks.length - 1; i >= 0; i--) {
+    if (!sparks[i].update()) { sparks.splice(i, 1); continue; }
+    const f = sparks[i].life / sparks[i].max;
+    fill(PAL.spark[0], PAL.spark[1], PAL.spark[2], 150 * f * f);
+    ellipse(sparks[i].x, sparks[i].y, 1.6 + 3.4 * f);
+  }
+  blendMode(BLEND);
+
+  // ambient sparks, more when the river is awake
+  if (random() < 0.15 + activity * 0.5) {
+    const p = particles[floor(random(particles.length))];
+    sparks.push(new Spark(p.x, p.y));
+  }
+
+  // ---- captions: gallery labels ----
+  noStroke();
+  textFont('monospace');
+  fill(PAL.survey[0], PAL.survey[1], PAL.survey[2], 90);
+  textSize(10);
+  text('LEVEE — plate i', 18, 24);
+  fill(PAL.survey[0], PAL.survey[1], PAL.survey[2], 45 + activity * 85);
+  text('THE SURVEY REDRAWS ITSELF — MOVE TO LET THE RIVER RUN · CLICK TO CUT A CHANNEL', 18, CONFIG.h - 16);
+}
+
+function updateGrid(lines, vertical) {
+  for (const line of lines) {
+    let maxOff = 0;
+    for (const p of line.pts) {
+      const [cx, cy] = curlAt(p.x, p.y);
+      const local = 0.6 + 0.8 * noise(p.x * 0.003, p.y * 0.003, 50);
+      const tx = cx * CONFIG.bendAmp * activity * local;
+      const ty = cy * CONFIG.bendAmp * activity * local;
+      p.ox += (tx - p.ox) * 0.06;
+      p.oy += (ty - p.oy) * 0.06;
+      maxOff = Math.max(maxOff, Math.abs(p.ox) + Math.abs(p.oy));
+    }
+    // the system justifies itself: a fully-reformed line flashes
+    if (activity < 0.06 && maxOff < 1.2) line.flash = 42;
+    if (line.flash > 0) line.flash--;
+  }
+}
+
+function drawGridLines(lines) {
+  noFill();
+  for (const line of lines) {
+    const displaced = line.flash === 42; // just reformed — a little self-congratulation
+    strokeWeight(displaced ? 1.8 : 1);
+    stroke(
+      PAL.survey[0], PAL.survey[1], PAL.survey[2],
+      (displaced ? 170 : 46 + activity * 55)
+    );
+    beginShape();
+    for (const p of line.pts) vertex(p.x + p.ox, p.y + p.oy);
+    endShape();
+  }
+}
+
+function mousePressed() {
+  // cut a channel: the river's memory, scored permanently into the map
+  let x = mouseX, y = mouseY;
+  scarBuf.noFill();
+  scarBuf.stroke(PAL.pale[0], PAL.pale[1], PAL.pale[2], 30);
+  scarBuf.strokeWeight(1.1);
+  scarBuf.beginShape();
+  for (let i = 0; i < 620; i++) {
+    scarBuf.vertex(x, y);
+    const [cx, cy] = curlAt(x, y);
+    x += cx * 1.8; y += cy * 1.8;
+    if (x < -30 || x > CONFIG.w + 30 || y < -30 || y > CONFIG.h + 30) break;
+  }
+  scarBuf.endShape();
+  // survey monument at the cut
+  scarBuf.stroke(PAL.survey[0], PAL.survey[1], PAL.survey[2], 70);
+  scarBuf.strokeWeight(1);
+  scarBuf.circle(mouseX, mouseY, 9);
+  scarBuf.line(mouseX - 6, mouseY, mouseX - 2, mouseY);
+  scarBuf.line(mouseX + 2, mouseY, mouseX + 6, mouseY);
+
+  // burst of water + phosphor
+  for (let i = 0; i < 140; i++) {
+    const p = particles[floor(random(particles.length))];
+    p.reset(mouseX + random(-8, 8), mouseY + random(-8, 8), true);
+  }
+  for (let i = 0; i < 70; i++) sparks.push(new Spark(mouseX, mouseY));
+}
+
+function keyPressed() {
+  if (key === 's' || key === 'S') saveCanvas('levee', 'png');
+  if (key === ' ') t += 100; // skip ahead in the noise — a different river
+}
+</script>
+</body>
+</html>
