@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Professional Dual-Oscillator Subtractive Synthesizer with crossfading, 4 waveforms (sine, square, saw, noise), dual filter options, ADSR envelopes, LFO matrix, effects rack, and interactive playable keyboard.">
+    <title>AURORA-X // Subtractive Synthesizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/synth.css">
+</head>
+<body>
+    <!-- Audio Start Overlay (Autoplay Policy Helper) -->
+    <div id="audio-unlock-overlay" class="audio-overlay">
+        <div class="overlay-card">
+            <div class="overlay-icon">
+                <svg viewBox="0 0 24 24" width="48" height="48" fill="currentColor">
+                    <path d="M8 5v14l11-7z"/>
+                </svg>
+            </div>
+            <h2>AURORA-X SYNTHESIZER</h2>
+            <p>Click or press any key to engage the Web Audio synthesis engine</p>
+            <button class="overlay-start-btn" id="overlay-start-trigger">INITIALIZE AUDIO</button>
+            <div class="overlay-tips">
+                <span>Play with Keyboard [A-K]</span> • <span>USB MIDI Plug & Play</span> • <span>Multi-Touch Enabled</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Synthesizer Chassis -->
+    <main class="synth-chassis" id="synth-container">
+        
+        <!-- Top Navigation & Header Bar -->
+        <header class="synth-header">
+            <div class="brand-badge">
+                <span class="brand-logo-gem"></span>
+                <div class="brand-text">
+                    <h1>AURORA-X</h1>
+                    <span class="sub-brand">DUAL-OSC SUBTRACTIVE SYNTH</span>
+                </div>
+            </div>
+
+            <!-- Patch & Preset Management -->
+            <div class="preset-section">
+                <span class="section-micro-label">PATCH SELECT</span>
+                <div class="preset-control-group">
+                    <select id="preset-select" class="synth-select" aria-label="Synthesizer Preset Selection"></select>
+                    <button id="btn-random-preset" class="synth-btn btn-icon" title="Randomize Patch (Dice)">
+                        <span class="dice-icon">🎲</span> RAND
+                    </button>
+                    <button id="btn-save-preset" class="synth-btn" title="Save Custom Patch">
+                        SAVE
+                    </button>
+                </div>
+            </div>
+
+            <!-- Global Status & Recording -->
+            <div class="header-status-group">
+                <div class="status-pill" id="midi-status-badge">MIDI: Searching...</div>
+                <div class="status-pill voice-pill" id="active-voice-count">0 Voices</div>
+                
+                <div class="record-module">
+                    <button id="btn-record" class="synth-btn btn-rec" title="Record Audio to WAV/WebM">
+                        <span class="rec-dot"></span>
+                        <span>REC</span>
+                    </button>
+                    <span id="record-time" class="rec-counter">00:00</span>
+                </div>
+
+                <button id="btn-panic" class="synth-btn btn-panic" title="Panic: All Notes Off">
+                    PANIC
+                </button>
+            </div>
+        </header>
+
+        <!-- Center Synthesizer Rack (Panels Grid) -->
+        <div class="synth-rack-grid">
+            
+            <!-- PANEL 1: DUAL OSCILLATORS & CROSSFADER -->
+            <section class="synth-panel osc-panel" aria-labelledby="osc-panel-title">
+                <div class="panel-header">
+                    <h2 id="osc-panel-title" class="panel-title">OSCILLATORS & CROSSFADE</h2>
+                    <span class="panel-tag">DUAL CORE</span>
+                </div>
+
+                <div class="osc-dual-container">
+                    <!-- OSCILLATOR 1 -->
+                    <div class="osc-module" id="osc1-module">
+                        <div class="osc-module-header">
+                            <span class="osc-name-tag">OSC 1</span>
+                        </div>
+                        
+                        <!-- 4 Waveforms: Sine, Square, Saw, Noise -->
+                        <div class="wave-selector" id="osc1-wave-buttons">
+                            <button class="wave-btn" data-wave="sine" title="Sine Wave">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 9 C 9 0, 10 0, 16 9 C 22 18, 23 18, 30 9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>SINE</span>
+                            </button>
+                            <button class="wave-btn" data-wave="square" title="Square Wave">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 15 L 2 3 L 16 3 L 16 15 L 30 15 L 30 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="miter"/>
+                                </svg>
+                                <span>SQUARE</span>
+                            </button>
+                            <button class="wave-btn active" data-wave="sawtooth" title="Sawtooth Wave">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 15 L 16 3 L 16 15 L 30 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="bevel"/>
+                                </svg>
+                                <span>SAW</span>
+                            </button>
+                            <button class="wave-btn" data-wave="noise" title="Noise Generator">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 9 L 6 3 L 9 15 L 13 5 L 17 14 L 21 4 L 25 15 L 30 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                <span>NOISE</span>
+                            </button>
+                        </div>
+
+                        <!-- Osc 1 Knobs -->
+                        <div class="knob-row">
+                            <div class="synth-knob" data-param="osc1.octave" data-min="-2" data-max="2" data-step="1" data-default="0" data-unit="oct" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">OCTAVE</span>
+                                <span class="knob-value-display">0 oct</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="osc1.semi" data-min="-12" data-max="12" data-step="1" data-default="0" data-unit="st" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">SEMI</span>
+                                <span class="knob-value-display">0 st</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="osc1.fine" data-min="-50" data-max="50" data-step="1" data-default="0" data-unit="cents" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">FINE</span>
+                                <span class="knob-value-display">0 c</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OSCILLATOR 2 -->
+                    <div class="osc-module" id="osc2-module">
+                        <div class="osc-module-header">
+                            <span class="osc-name-tag">OSC 2</span>
+                        </div>
+
+                        <!-- 4 Waveforms: Sine, Square, Saw, Noise -->
+                        <div class="wave-selector" id="osc2-wave-buttons">
+                            <button class="wave-btn" data-wave="sine" title="Sine Wave">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 9 C 9 0, 10 0, 16 9 C 22 18, 23 18, 30 9" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+                                </svg>
+                                <span>SINE</span>
+                            </button>
+                            <button class="wave-btn active" data-wave="square" title="Square Wave">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 15 L 2 3 L 16 3 L 16 15 L 30 15 L 30 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="miter"/>
+                                </svg>
+                                <span>SQUARE</span>
+                            </button>
+                            <button class="wave-btn" data-wave="sawtooth" title="Sawtooth Wave">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 15 L 16 3 L 16 15 L 30 3" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="bevel"/>
+                                </svg>
+                                <span>SAW</span>
+                            </button>
+                            <button class="wave-btn" data-wave="noise" title="Noise Generator">
+                                <svg viewBox="0 0 32 18" class="wave-svg">
+                                    <path d="M2 9 L 6 3 L 9 15 L 13 5 L 17 14 L 21 4 L 25 15 L 30 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                <span>NOISE</span>
+                            </button>
+                        </div>
+
+                        <!-- Osc 2 Knobs -->
+                        <div class="knob-row">
+                            <div class="synth-knob" data-param="osc2.octave" data-min="-2" data-max="2" data-step="1" data-default="0" data-unit="oct" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">OCTAVE</span>
+                                <span class="knob-value-display">0 oct</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="osc2.semi" data-min="-12" data-max="12" data-step="1" data-default="0" data-unit="st" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">SEMI</span>
+                                <span class="knob-value-display">0 st</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="osc2.fine" data-min="-50" data-max="50" data-step="1" data-default="0" data-unit="cents" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">FINE</span>
+                                <span class="knob-value-display">0 c</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- EQUAL-POWER CROSSFADER SECTION -->
+                <div class="crossfade-module">
+                    <div class="crossfade-header">
+                        <span class="cf-osc-badge osc1-badge">OSC 1 (<span id="cf-pct-osc1">50%</span>)</span>
+                        <span class="cf-title">CROSSFADE BLEND</span>
+                        <span class="cf-osc-badge osc2-badge">OSC 2 (<span id="cf-pct-osc2">50%</span>)</span>
+                    </div>
+
+                    <div class="crossfade-slider-container">
+                        <input type="range" id="osc-crossfader" class="crossfader-input" min="0" max="1" step="0.005" value="0.5" aria-label="Oscillator Crossfade Slider">
+                        <div class="crossfade-track-ticks">
+                            <span class="tick left">100:0</span>
+                            <span class="tick center">50:50</span>
+                            <span class="tick right">0:100</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 2: SUBTRACTIVE FILTER (2 FILTER OPTIONS) -->
+            <section class="synth-panel filter-panel" aria-labelledby="filter-panel-title">
+                <div class="panel-header">
+                    <h2 id="filter-panel-title" class="panel-title">SUBTRACTIVE FILTER</h2>
+                    <span class="panel-tag">RESONANT VCF</span>
+                </div>
+
+                <!-- 2 FILTER OPTIONS SELECTION -->
+                <div class="filter-options-bar">
+                    <span class="filter-opt-label">FILTER OPTION:</span>
+                    <div class="filter-btn-group">
+                        <button class="filter-opt-btn active" data-option="optionA" title="Option A: 24dB Cascaded Low-Pass Ladder Filter">
+                            <span class="btn-led"></span>
+                            <span class="btn-txt">OPT A: 24dB LOWPASS</span>
+                        </button>
+                        <button class="filter-opt-btn" data-option="optionB" title="Option B: 12dB Sculpting High-Pass Filter">
+                            <span class="btn-led"></span>
+                            <span class="btn-txt">OPT B: 12dB HIGHPASS</span>
+                        </button>
+                        <button class="filter-opt-btn" data-option="bandpass" title="Option C: Resonant Band-Pass Filter">
+                            <span class="btn-led"></span>
+                            <span class="btn-txt">BANDPASS</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Primary Filter Knobs -->
+                <div class="knob-row filter-main-knobs">
+                    <!-- Big Cutoff Knob -->
+                    <div class="synth-knob knob-large" data-param="filter.cutoff" data-min="20" data-max="20000" data-default="2400" data-unit="Hz" data-curve="log" data-precision="0">
+                        <div class="knob-surface">
+                            <svg class="knob-ring" viewBox="0 0 40 40">
+                                <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                            </svg>
+                            <div class="knob-cap"><div class="knob-indicator"></div></div>
+                        </div>
+                        <span class="knob-label">CUTOFF</span>
+                        <span class="knob-value-display">2.4k Hz</span>
+                    </div>
+
+                    <!-- Resonance (Q) -->
+                    <div class="synth-knob knob-large" data-param="filter.resonance" data-min="0.5" data-max="20" data-step="0.1" data-default="4.5" data-unit="" data-precision="1">
+                        <div class="knob-surface">
+                            <svg class="knob-ring" viewBox="0 0 40 40">
+                                <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                            </svg>
+                            <div class="knob-cap"><div class="knob-indicator"></div></div>
+                        </div>
+                        <span class="knob-label">RESONANCE</span>
+                        <span class="knob-value-display">4.5</span>
+                    </div>
+
+                    <!-- Filter Env Amount -->
+                    <div class="synth-knob" data-param="filter.envAmount" data-min="-8000" data-max="8000" data-step="50" data-default="3800" data-unit="Hz" data-precision="0">
+                        <div class="knob-surface">
+                            <svg class="knob-ring" viewBox="0 0 40 40">
+                                <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                            </svg>
+                            <div class="knob-cap"><div class="knob-indicator"></div></div>
+                        </div>
+                        <span class="knob-label">ENV MOD</span>
+                        <span class="knob-value-display">+3.8k Hz</span>
+                    </div>
+
+                    <!-- Key Tracking -->
+                    <div class="synth-knob" data-param="filter.keyTrack" data-min="0" data-max="1" data-step="0.05" data-default="0.5" data-unit="%" data-precision="0">
+                        <div class="knob-surface">
+                            <svg class="knob-ring" viewBox="0 0 40 40">
+                                <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                            </svg>
+                            <div class="knob-cap"><div class="knob-indicator"></div></div>
+                        </div>
+                        <span class="knob-label">KEY TRACK</span>
+                        <span class="knob-value-display">50%</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 3: ENVELOPES (AMP ADSR & FILTER ADSR) -->
+            <section class="synth-panel env-panel" aria-labelledby="env-panel-title">
+                <div class="panel-header">
+                    <h2 id="env-panel-title" class="panel-title">ENVELOPES (ADSR)</h2>
+                    <span class="panel-tag">MODULATORS</span>
+                </div>
+
+                <div class="env-dual-container">
+                    <!-- AMP ENVELOPE -->
+                    <div class="adsr-subpanel">
+                        <div class="adsr-title">AMPLIFIER ENVELOPE</div>
+                        <div class="knob-row">
+                            <div class="synth-knob" data-param="ampEnv.attack" data-min="0.001" data-max="4.0" data-step="0.01" data-default="0.015" data-unit="s" data-curve="log" data-precision="2">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">A</span>
+                                <span class="knob-value-display">15ms</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="ampEnv.decay" data-min="0.01" data-max="5.0" data-step="0.01" data-default="0.25" data-unit="s" data-curve="log" data-precision="2">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">D</span>
+                                <span class="knob-value-display">250ms</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="ampEnv.sustain" data-min="0" data-max="1" data-step="0.01" data-default="0.7" data-unit="%" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">S</span>
+                                <span class="knob-value-display">70%</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="ampEnv.release" data-min="0.01" data-max="5.0" data-step="0.01" data-default="0.4" data-unit="s" data-curve="log" data-precision="2">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">R</span>
+                                <span class="knob-value-display">400ms</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- FILTER ENVELOPE -->
+                    <div class="adsr-subpanel">
+                        <div class="adsr-title">FILTER ENVELOPE</div>
+                        <div class="knob-row">
+                            <div class="synth-knob" data-param="filterEnv.attack" data-min="0.001" data-max="4.0" data-step="0.01" data-default="0.03" data-unit="s" data-curve="log" data-precision="2">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">A</span>
+                                <span class="knob-value-display">30ms</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="filterEnv.decay" data-min="0.01" data-max="5.0" data-step="0.01" data-default="0.35" data-unit="s" data-curve="log" data-precision="2">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">D</span>
+                                <span class="knob-value-display">350ms</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="filterEnv.sustain" data-min="0" data-max="1" data-step="0.01" data-default="0.3" data-unit="%" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">S</span>
+                                <span class="knob-value-display">30%</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="filterEnv.release" data-min="0.01" data-max="5.0" data-step="0.01" data-default="0.4" data-unit="s" data-curve="log" data-precision="2">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">R</span>
+                                <span class="knob-value-display">400ms</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 4: LFO & VOICE MODE -->
+            <section class="synth-panel lfo-panel" aria-labelledby="lfo-panel-title">
+                <div class="panel-header">
+                    <h2 id="lfo-panel-title" class="panel-title">LFO & VOICING</h2>
+                    <span class="panel-tag">LFO MOD</span>
+                </div>
+
+                <div class="lfo-layout">
+                    <!-- LFO Controls -->
+                    <div class="lfo-controls-col">
+                        <div class="lfo-header-row">
+                            <span class="lfo-subheading">SHAPE</span>
+                            <div class="lfo-wave-chips">
+                                <button class="lfo-wave-btn active" data-lfo-wave="sine" title="Sine LFO">∿</button>
+                                <button class="lfo-wave-btn" data-lfo-wave="triangle" title="Triangle LFO">▲</button>
+                                <button class="lfo-wave-btn" data-lfo-wave="sawtooth" title="Saw LFO">⧎</button>
+                                <button class="lfo-wave-btn" data-lfo-wave="square" title="Square LFO">⎍</button>
+                            </div>
+                        </div>
+
+                        <div class="lfo-targets-row">
+                            <span class="lfo-subheading">DESTINATION</span>
+                            <div class="lfo-target-group">
+                                <button class="lfo-target-btn" data-lfo-target="filter">FILTER</button>
+                                <button class="lfo-target-btn active" data-lfo-target="pitch">PITCH</button>
+                                <button class="lfo-target-btn" data-lfo-target="amp">TREM</button>
+                            </div>
+                        </div>
+
+                        <div class="knob-row">
+                            <div class="synth-knob" data-param="lfo.rate" data-min="0.1" data-max="20" data-step="0.1" data-default="4.5" data-unit="Hz" data-precision="1">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">LFO RATE</span>
+                                <span class="knob-value-display">4.5 Hz</span>
+                            </div>
+
+                            <div class="synth-knob" data-param="lfo.depth" data-min="0" data-max="1" data-step="0.01" data-default="0.15" data-unit="%" data-precision="0">
+                                <div class="knob-surface">
+                                    <svg class="knob-ring" viewBox="0 0 40 40">
+                                        <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                        <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                    </svg>
+                                    <div class="knob-cap"><div class="knob-indicator"></div></div>
+                                </div>
+                                <span class="knob-label">LFO DEPTH</span>
+                                <span class="knob-value-display">15%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Voicing Mode & Glide -->
+                    <div class="voicing-controls-col">
+                        <span class="lfo-subheading">KEY MODE</span>
+                        <div class="mode-btn-group">
+                            <button class="mode-btn active" data-mode="poly">POLY</button>
+                            <button class="mode-btn" data-mode="mono">MONO / GLIDE</button>
+                        </div>
+
+                        <div class="synth-knob" data-param="glideTime" data-min="0.005" data-max="0.4" data-step="0.005" data-default="0.02" data-unit="s" data-precision="2">
+                            <div class="knob-surface">
+                                <svg class="knob-ring" viewBox="0 0 40 40">
+                                    <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                    <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                </svg>
+                                <div class="knob-cap"><div class="knob-indicator"></div></div>
+                            </div>
+                            <span class="knob-label">PORTAMENTO</span>
+                            <span class="knob-value-display">20ms</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- PANEL 5: MASTER FX & VISUALIZER -->
+            <section class="synth-panel fx-vis-panel" aria-labelledby="fx-panel-title">
+                <div class="panel-header">
+                    <h2 id="fx-panel-title" class="panel-title">EFFECTS & SCOPE</h2>
+                    <div class="vis-mode-switch">
+                        <button id="vis-btn-scope" class="vis-tab-btn active">WAVE</button>
+                        <button id="vis-btn-spec" class="vis-tab-btn">SPECTRUM</button>
+                    </div>
+                </div>
+
+                <!-- Real-Time Visualizer Canvas -->
+                <div class="visualizer-wrapper">
+                    <canvas id="synth-visualizer-canvas" class="visualizer-canvas"></canvas>
+                </div>
+
+                <!-- Master Effects Controls -->
+                <div class="fx-rack-row">
+                    <!-- Distortion Module -->
+                    <div class="fx-unit">
+                        <div class="fx-unit-header">
+                            <label class="synth-toggle">
+                                <input type="checkbox" id="fx-dist-switch">
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="fx-title">DRIVE</span>
+                        </div>
+                        <div class="synth-knob" data-param="effects.distortion.drive" data-min="1" data-max="60" data-step="1" data-default="25" data-unit="" data-precision="0">
+                            <div class="knob-surface">
+                                <svg class="knob-ring" viewBox="0 0 40 40">
+                                    <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                    <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                </svg>
+                                <div class="knob-cap"><div class="knob-indicator"></div></div>
+                            </div>
+                            <span class="knob-label">AMOUNT</span>
+                            <span class="knob-value-display">25</span>
+                        </div>
+                    </div>
+
+                    <!-- Stereo Delay Module -->
+                    <div class="fx-unit">
+                        <div class="fx-unit-header">
+                            <label class="synth-toggle">
+                                <input type="checkbox" id="fx-delay-switch" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="fx-title">DELAY</span>
+                        </div>
+                        <div class="synth-knob" data-param="effects.delay.time" data-min="0.05" data-max="0.8" data-step="0.01" data-default="0.28" data-unit="s" data-precision="2">
+                            <div class="knob-surface">
+                                <svg class="knob-ring" viewBox="0 0 40 40">
+                                    <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                    <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                </svg>
+                                <div class="knob-cap"><div class="knob-indicator"></div></div>
+                            </div>
+                            <span class="knob-label">TIME</span>
+                            <span class="knob-value-display">280ms</span>
+                        </div>
+                    </div>
+
+                    <!-- Reverb Module -->
+                    <div class="fx-unit">
+                        <div class="fx-unit-header">
+                            <label class="synth-toggle">
+                                <input type="checkbox" id="fx-reverb-switch" checked>
+                                <span class="toggle-slider"></span>
+                            </label>
+                            <span class="fx-title">REVERB</span>
+                        </div>
+                        <div class="synth-knob" data-param="effects.reverb.decay" data-min="0.5" data-max="6.0" data-step="0.1" data-default="2.2" data-unit="s" data-precision="1">
+                            <div class="knob-surface">
+                                <svg class="knob-ring" viewBox="0 0 40 40">
+                                    <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                    <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                </svg>
+                                <div class="knob-cap"><div class="knob-indicator"></div></div>
+                            </div>
+                            <span class="knob-label">DECAY</span>
+                            <span class="knob-value-display">2.2s</span>
+                        </div>
+                    </div>
+
+                    <!-- Master Volume -->
+                    <div class="fx-unit master-unit">
+                        <span class="fx-title master-title">MASTER</span>
+                        <div class="synth-knob knob-large" data-param="masterGain" data-min="0" data-max="1" data-step="0.01" data-default="0.75" data-unit="%" data-precision="0">
+                            <div class="knob-surface">
+                                <svg class="knob-ring" viewBox="0 0 40 40">
+                                    <circle class="knob-ring-bg" cx="20" cy="20" r="17"/>
+                                    <circle class="knob-ring-progress" cx="20" cy="20" r="17"/>
+                                </svg>
+                                <div class="knob-cap"><div class="knob-indicator"></div></div>
+                            </div>
+                            <span class="knob-label">LEVEL</span>
+                            <span class="knob-value-display">75%</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Bottom Performance Section: Wheels & Playable Piano Keyboard -->
+        <footer class="synth-performance-section">
+            <div class="performance-toolbar">
+                <div class="octave-control-group">
+                    <span class="toolbar-label">KEYBOARD RANGE:</span>
+                    <button id="btn-oct-down" class="synth-btn btn-sm" title="Octave Down (Z)">OCT -</button>
+                    <span id="octave-val" class="octave-indicator">C3 - C6</span>
+                    <button id="btn-oct-up" class="synth-btn btn-sm" title="Octave Up (X)">OCT +</button>
+                </div>
+                
+                <div class="keybind-helper-hint">
+                    <span class="hint-badge">HOTKEYS</span> QWERTY Keys [A-K], Octave Shift [Z/X]
+                </div>
+            </div>
+
+            <div class="keyboard-stage">
+                <!-- Expression Wheels (Pitch Bend & Mod Wheel) -->
+                <div class="wheels-container">
+                    <!-- Pitch Wheel (Spring center return) -->
+                    <div class="wheel-box">
+                        <span class="wheel-label">PITCH</span>
+                        <div class="wheel-well" id="wheel-pitch">
+                            <div class="wheel-thumb" id="wheel-pitch-thumb"></div>
+                            <div class="wheel-center-notch"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mod Wheel (Sticky position) -->
+                    <div class="wheel-box">
+                        <span class="wheel-label">MOD</span>
+                        <div class="wheel-well" id="wheel-mod">
+                            <div class="wheel-thumb" id="wheel-mod-thumb"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Playable Piano Keybed -->
+                <div class="keys-scroll-container">
+                    <div id="synth-keyboard-keys" class="keyboard-keybed" role="region" aria-label="Playable Piano Keyboard">
+                        <!-- Keys injected dynamically by js/keyboard.js -->
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </main>
+
+    <!-- Scripts -->
+    <script src="js/audio-engine.js"></script>
+    <script src="js/knob-controller.js"></script>
+    <script src="js/visualizer.js"></script>
+    <script src="js/keyboard.js"></script>
+    <script src="js/midi.js"></script>
+    <script src="js/presets.js"></script>
+    <script src="js/recorder.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
