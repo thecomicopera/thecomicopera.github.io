@@ -321,6 +321,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Audio Unlock overlay handling for strict browser audio autoplay policy
+    const audioOverlay = document.getElementById('audio-unlock-overlay');
+    const startAudio = async () => {
+        await engine.ensureAudioReady();
+        if (audioOverlay) {
+            audioOverlay.classList.add('hidden');
+        }
+    };
+
+    if (audioOverlay) {
+        audioOverlay.addEventListener('click', startAudio);
+        audioOverlay.addEventListener('touchstart', startAudio, { passive: false });
+    }
+    window.addEventListener('keydown', () => engine.ensureAudioReady(), { once: true });
+    window.addEventListener('mousedown', () => engine.ensureAudioReady(), { once: true });
+
     // Load first preset by default
     presetManager.applyPreset(0);
+
+    // Expose synth instances globally for WebMCP and external integrations
+    window.synth = {
+        engine,
+        keyboard,
+        visualizer,
+        recorder,
+        presetManager,
+        knobs,
+        updateUIForPreset
+    };
 });

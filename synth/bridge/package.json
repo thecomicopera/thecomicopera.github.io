@@ -1,0 +1,18 @@
+{
+  "name": "synthweb-mcp-bridge",
+  "version": "1.0.0",
+  "description": "Generic WebMCP-to-MCP CDP stdio bridge for synthWeb",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "synthweb-mcp-bridge": "./index.js"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node test-bridge.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.1",
+    "puppeteer-core": "^24.4.0"
+  }
+}
