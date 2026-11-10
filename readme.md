@@ -1,6 +1,5 @@
 Profile hub + Neon Relay game.
 
-- Root (/)            → profile page: index.html
-- Game (/game/)       → Neon Relay puzzle: game/index.html
+- Profile page and simple app showcase
 
-Deployed at: https://thecomicopera.github.io/page.neon-relay/
+Deployed at: https://thecomicopera.github.io/
